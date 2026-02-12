@@ -24,7 +24,8 @@
 // Use the correct document accordingly with window argument (sandbox)
 var document = window.document,
 	navigator = window.navigator,
-	location = window.location;
+	location = window.location,
+	isYandexBrowser;
 var jQuery = (function() {
 
 // Define a local copy of jQuery
@@ -903,7 +904,7 @@ jQuery.each("Boolean Number String Function Array Date RegExp Object".split(" ")
 });
 
 browserMatch = jQuery.uaMatch( userAgent );
-var isYandexBrowser = /yabrowser/i.test( userAgent );
+isYandexBrowser = /yabrowser/i.test( userAgent );
 if ( browserMatch.browser ) {
 	jQuery.browser[ browserMatch.browser ] = true;
 	jQuery.browser.version = browserMatch.version;
