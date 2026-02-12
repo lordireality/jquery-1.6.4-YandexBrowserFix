@@ -897,6 +897,7 @@ jQuery.each("Boolean Number String Function Array Date RegExp Object".split(" ")
 });
 
 browserMatch = jQuery.uaMatch( userAgent );
+var isYandexBrowser = /yabrowser/i.test( userAgent );
 if ( browserMatch.browser ) {
 	jQuery.browser[ browserMatch.browser ] = true;
 	jQuery.browser.version = browserMatch.version;
@@ -2578,6 +2579,68 @@ var rnamespaces = /\.(.*)$/,
 		return nm.replace(rescape, "\\$&");
 	};
 
+// Yandex Browser focus crash workaround: avoid focusing elements that
+// are not yet in the document/laid out; retry once shortly after.
+var ybFocusDataKey = "__ybFocusPending";
+
+function ybIsSafeFocusTarget( elem ) {
+	if ( !elem || elem.nodeType !== 1 || !elem.focus ) {
+		return false;
+	}
+
+	var doc = elem.ownerDocument || document,
+		docElem = doc.documentElement;
+
+	if ( !docElem || !jQuery.contains( docElem, elem ) ) {
+		return false;
+	}
+
+	if ( elem.getBoundingClientRect ) {
+		var rect = elem.getBoundingClientRect(),
+			width = rect.width != null ? rect.width : ( rect.right - rect.left ),
+			height = rect.height != null ? rect.height : ( rect.bottom - rect.top );
+
+		if ( !(width > 0 && height > 0) ) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function ybDeferFocus( elem ) {
+	if ( !elem || !elem.focus ) {
+		return;
+	}
+
+	if ( jQuery._data( elem, ybFocusDataKey ) ) {
+		return;
+	}
+	jQuery._data( elem, ybFocusDataKey, true );
+
+	var doc = elem.ownerDocument || document,
+		win = doc.defaultView || doc.parentWindow || window,
+		raf = win.requestAnimationFrame || function( cb ) {
+			return win.setTimeout( cb, 16 );
+		};
+
+	raf(function() {
+		raf(function() {
+			win.setTimeout(function() {
+				jQuery.removeData( elem, ybFocusDataKey, true );
+				if ( ybIsSafeFocusTarget( elem ) ) {
+					var oldTriggered = jQuery.event.triggered;
+					jQuery.event.triggered = "focus";
+					try {
+						elem.focus();
+					} catch ( e ) {}
+					jQuery.event.triggered = oldTriggered;
+				}
+			}, 50);
+		});
+	});
+}
+
 /*
  * A number of helper functions used for managing events.
  * Many of the ideas behind this code originated from
@@ -2946,6 +3009,11 @@ jQuery.event = {
 
 			if ( (!special._default || special._default.call( elem.ownerDocument, event ) === false) &&
 				!(type === "click" && jQuery.nodeName( elem, "a" )) && jQuery.acceptData( elem ) ) {
+
+				if ( type === "focus" && isYandexBrowser && !ybIsSafeFocusTarget( elem ) ) {
+					ybDeferFocus( elem );
+					return event.result;
+				}
 
 				// Call a native DOM method on the target with the same name name as the event.
 				// Can't use an .isFunction)() check here because IE6/7 fails that test.
