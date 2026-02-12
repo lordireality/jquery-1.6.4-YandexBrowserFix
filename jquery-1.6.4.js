@@ -12,6 +12,12 @@
  * Released under the MIT, BSD, and GPL Licenses.
  *
  * Date: Mon Sep 12 18:54:48 2011 -0400
+ * 
+ * YandexBrowser focus() fix
+ * https://github.com/lordireality/jquery-1.6.4-YandexBrowserFix
+ * German Zykin
+ * Date: Feb 12 2026
+ * 
  */
 (function( window, undefined ) {
 
